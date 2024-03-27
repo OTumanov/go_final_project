@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -15,7 +16,7 @@ const (
 	webDir = "./web"
 )
 
-func needInstallDb() bool {
+func checkDb() bool {
 	dbName := utils.EnvDBFILE("TODO_DBFILE")
 
 	log.Println("Ищем файл БД sqlite...")
@@ -80,15 +81,36 @@ func server() {
 	log.Println("Запускаем HTTP-сервер...")
 	log.Println("Вот тут -- http://localhost" + listenPort)
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
+	http.Handle("/api/nextdate", http.HandlerFunc(nextDate))
 	err := http.ListenAndServe(listenPort, nil)
 	if err != nil {
 		panic(err)
 	}
+	defer log.Println("Сервер остановлен!")
+}
+
+func nextDate(w http.ResponseWriter, r *http.Request) {
+	now := r.URL.Query().Get("now")
+	date := r.URL.Query().Get("date")
+	repeat := r.URL.Query().Get("repeat")
+
+	nowTime, err := time.Parse("20060102", now)
+	if err != nil {
+		return
+	}
+
+	log.Println("now=", now, "date=", date, "repeat=", repeat)
+
+	nextDate, err := utils.NextDate(nowTime, date, repeat)
+
+	log.Println("nextDate=", nextDate, "err=", err)
+
+	w.Write([]byte(nextDate))
 }
 
 func main() {
 	log.Println("Запуск! =)")
-	if needInstallDb() {
+	if checkDb() {
 		server()
 	}
 }
