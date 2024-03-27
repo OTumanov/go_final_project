@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"github.com/OTumanov/go_final_project/utils"
 	"log"
 	"net/http"
 	"os"
@@ -12,10 +13,11 @@ import (
 
 const (
 	webDir = "./web"
-	dbName = "scheduler.db"
 )
 
 func needInstallDb() bool {
+	dbName := utils.EnvDBFILE("TODO_DBFILE")
+
 	log.Println("Ищем файл БД sqlite...")
 	appPath, err := os.Executable()
 	if err != nil {
@@ -26,9 +28,8 @@ func needInstallDb() bool {
 
 	log.Println("Вот чего нам вернулось вместо БД -- " + err.Error())
 	log.Println("А это значит, что БД не найдена. Будем создавать...")
-
 	if err != nil {
-		ok, err := installDB()
+		ok, err := installDB(dbName)
 		if err != nil && !ok {
 			log.Fatal(err)
 			return false
@@ -37,9 +38,10 @@ func needInstallDb() bool {
 	return true
 }
 
-func installDB() (bool, error) {
+func installDB(dbName string) (bool, error) {
 	log.Println("Создаем БД...")
 	db, err := sql.Open("sqlite3", dbName)
+
 	log.Println("Создали пустую БД")
 	log.Println("Установили соединение с ней")
 	if err != nil {
@@ -58,7 +60,6 @@ func installDB() (bool, error) {
 	);
 	`
 	log.Println("Создали таблицы в БД")
-
 	_, err = db.Exec(createTableSQL)
 	if err != nil {
 		log.Fatal("Упс!.. Ошибка при создании таблиц: ", err)
@@ -74,17 +75,12 @@ func installDB() (bool, error) {
 	return true, err
 }
 
-func listenPort(key string) string {
-	port := ":" + os.Getenv(key)
-	return port
-}
-
 func server() {
+	listenPort := utils.EnvPORT("TODO_PORT")
 	log.Println("Запускаем HTTP-сервер...")
-	log.Println("Будем использовать порт" + listenPort("TODO_PORT"))
-	log.Println("Вот тут -- http://localhost" + listenPort("TODO_PORT"))
+	log.Println("Вот тут -- http://localhost" + listenPort)
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
-	err := http.ListenAndServe(listenPort("TODO_PORT"), nil)
+	err := http.ListenAndServe(listenPort, nil)
 	if err != nil {
 		panic(err)
 	}
