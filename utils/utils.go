@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/OTumanov/go_final_project/settings"
 	"log"
 	"os"
 )
@@ -10,7 +11,7 @@ func EnvPORT(key string) string {
 	port := os.Getenv(key)
 	if len(port) == 0 {
 		log.Println("Порт не задан. Будем использовать 7540")
-		port = "7540"
+		port = settings.Port
 	} else {
 		log.Println("Порт задан -- " + port)
 	}
@@ -22,7 +23,7 @@ func EnvDBFILE(key string) string {
 	dbName := os.Getenv(key)
 	if len(dbName) == 0 {
 		log.Println("Имя БД не задано. Будем использовать scheduler.db")
-		dbName = "scheduler.db"
+		dbName = settings.DBFile
 	} else {
 		log.Println("Имя БД задано -- " + dbName)
 	}
