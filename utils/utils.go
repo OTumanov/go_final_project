@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -41,22 +42,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		return "Ошибка в разборе повтора", err
 	}
 
-	if typeRepeat == "year" {
-		srtNow := now.Format("20060102")
-		nextDate := date
-
-		for srtNow > nextDate || date >= nextDate {
-			t, err := time.Parse("20060102", nextDate)
-			if err != nil {
-				return "Некорректная дата", fmt.Errorf("Не смог разобрать вот это: %s", date)
-			}
-			nextDate = t.AddDate(1, 0, 0).Format("20060102")
-		}
-		return nextDate, nil
-	}
-
 	if typeRepeat == "simple" {
-
 		switch repeat[0] {
 		case 'd':
 			addDays, _ := strconv.Atoi(repeat[2:])
@@ -76,43 +62,101 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 				compareDate = t.AddDate(0, 0, addDays).Format("20060102")
 			}
 			return compareDate, nil
-		case 'm':
-			addMonths, _ := strconv.Atoi(repeat[2:])
-			if addMonths < 1 || addMonths > 12 {
-				return "Некорректное значение повтора. Допускается от 1 до 12 месяцев", fmt.Errorf("некорректное значение повтора: %s", repeat)
+		case 'y':
+			srtNow := now.Format("20060102")
+			compareDate := date
+
+			for srtNow > compareDate || date >= compareDate {
+				t, err := time.Parse("20060102", compareDate)
+				if err != nil {
+					return "Некорректная дата", fmt.Errorf("Не смог разобрать вот это: %s", date)
+				}
+				compareDate = t.AddDate(1, 0, 0).Format("20060102")
 			}
-			next, err := time.Parse("20060102", date)
-			if err != nil {
-				return "Некорректная дата", fmt.Errorf("Не смог разобрать вот это: %s", date)
-			}
-			for next.Before(now) {
-				next = next.AddDate(0, addMonths, 0)
-			}
-			return next.Format("20060102"), nil
+			return compareDate, nil
 		}
 	}
 	if typeRepeat == "adv" {
-		return now.Format("20060102"), nil
+		switch repeat[0] {
+		case 'w':
+
+			weekdaysStr := strings.TrimPrefix(repeat, "w ")
+
+			//например {"20240126", "w 7", "20240128"}
+			if match, _ := regexp.MatchString(`^\d+$`, weekdaysStr); match {
+				dayNum, _ := strconv.Atoi(strings.TrimSpace(weekdaysStr))
+				if dayNum < 1 || dayNum > 7 {
+					return "Некорректное значение повтора. Допускается w <через запятую от 1 до 7>",
+						fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
+
+				}
+				return NextWeekday(now, date, dayNum)
+			}
+
+			//например {"20230126", "w 4,5", "20240201"}, {"20230226", "w 8,4,5", ""}
+			weekdaysList := strings.Split(weekdaysStr, ",")
+			weekdayMap := make(map[int]bool)
+
+			for _, dayStr := range weekdaysList {
+				dayNum, err := strconv.Atoi(strings.TrimSpace(dayStr))
+				if err != nil {
+					return "Некорректное значение повтора",
+						fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
+				}
+				if dayNum < 1 || dayNum > 7 {
+					return "Некорректное значение повтора. Допускается w <через запятую от 1 до 7>",
+						fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
+				}
+				weekdayMap[dayNum] = true
+			}
+			for i := range weekdayMap {
+				findWeekday, err := NextWeekday(now, date, i)
+				if err != nil {
+					return "Некорректное значение повтора",
+						fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
+				}
+				if findWeekday > date && findWeekday > now.Format("20060102") {
+					return findWeekday, nil
+				}
+			}
+			return "Некорректное значение повтора. Допускается w <через запятую от 1 до 7>",
+				fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
+		}
+		return "", nil
 	}
 
 	return "Что-то пошло не так...", fmt.Errorf("Неправильный формат повтора: %s", repeat)
 }
 
 func isValidRepeat(repeat string) (string, error) {
-	year := regexp.MustCompile(`^y$`)
-	simple := regexp.MustCompile(`^[wdm]\s\d+$`)
-	adv := regexp.MustCompile(`^[wdm]\s\d+(,\d+)*$`)
+	yearRegexp := regexp.MustCompile(`^y$`)
+	simpleRegexp := regexp.MustCompile(`^[d]\s\d+$`)
+	advRegexp := regexp.MustCompile(`^[d]\s\d+(,\d+)*$`)
+	advWOneDayRegexp := regexp.MustCompile(`^w\s\d+$`)
+	advWSomeDaysRegexp := regexp.MustCompile(`^w\s\d+(,\d+)+$`)
 
-	if year.MatchString(repeat) {
-		return "year", nil
-	}
-	if simple.MatchString(repeat) {
+	if yearRegexp.MatchString(repeat) || simpleRegexp.MatchString(repeat) {
 		return "simple", nil
 	}
-
-	if adv.MatchString(repeat) {
+	if advRegexp.MatchString(repeat) || advWOneDayRegexp.MatchString(repeat) || advWSomeDaysRegexp.MatchString(repeat) {
 		return "adv", nil
 	}
 
 	return "", fmt.Errorf("Неверный формат повтора: %s", repeat)
+}
+
+func NextWeekday(now time.Time, date string, weekday int) (string, error) {
+	eventDate, err := time.Parse("20060102", date)
+	if err != nil {
+		return "", fmt.Errorf("некорректная дата создания события: %v", err)
+	}
+	currentWeekday := int(now.Weekday())
+	daysUntilWeekday := (weekday - currentWeekday + 7) % 7
+	nextWeekday := now.AddDate(0, 0, daysUntilWeekday)
+
+	if nextWeekday.Before(eventDate) {
+		nextWeekday = eventDate.AddDate(0, 0, (7-currentWeekday+weekday)%7)
+	}
+
+	return nextWeekday.Format("20060102"), nil
 }
