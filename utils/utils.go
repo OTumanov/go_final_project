@@ -35,7 +35,6 @@ func EnvDBFILE(key string) string {
 }
 
 func NextDate(now time.Time, date string, repeat string) (string, error) {
-
 	typeRepeat, err := isValidRepeat(repeat)
 
 	if err != nil {
@@ -43,39 +42,41 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 	}
 
 	if typeRepeat == "year" {
-		next, err := time.Parse("20060102", date)
-		compDate, err := time.Parse("20060102", date)
+		srtNow := now.Format("20060102")
+		nextDate := date
 
-		if err != nil {
-			return "Некорректная дата", fmt.Errorf("Не смог разобрать вот это: %s", date)
-		}
-
-		fmt.Println("ДО -- next=", next, "compDate=", compDate)
-
-		for next.Before(compDate) {
-			next = next.AddDate(1, 0, 0)
-			fmt.Println("После -- next=", next, "compDate=", compDate)
-		}
-		return next.Format("20060102"), nil
-	}
-
-	if typeRepeat == "simple" {
-		switch repeat[0] {
-		case 'd': //если повтор в днях
-			addDays, _ := strconv.Atoi(repeat[2:])
-			if addDays < 1 || addDays > 400 {
-				return "Некорректное значение повтора. Допускается от 1 до 400 дней", fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
-			}
-			next, err := time.Parse("20060102", date)
+		for srtNow > nextDate || date >= nextDate {
+			t, err := time.Parse("20060102", nextDate)
 			if err != nil {
 				return "Некорректная дата", fmt.Errorf("Не смог разобрать вот это: %s", date)
 			}
-			for next.Before(now) {
-				next = next.AddDate(0, 0, addDays)
-			}
-			return next.Format("20060102"), nil
+			nextDate = t.AddDate(1, 0, 0).Format("20060102")
+		}
+		return nextDate, nil
+	}
 
-		case 'm': //если повтор в месяцах
+	if typeRepeat == "simple" {
+
+		switch repeat[0] {
+		case 'd':
+			addDays, _ := strconv.Atoi(repeat[2:])
+			if addDays < 1 == true || addDays > 400 == true {
+				return "Некорректное значение повтора. Допускается от 1 до 400 дней",
+					fmt.Errorf("Обрати внимание вот сюда: %s", repeat)
+			}
+
+			srtNow := now.Format("20060102")
+			compareDate := date
+
+			for srtNow > compareDate || date >= compareDate {
+				t, err := time.Parse("20060102", compareDate)
+				if err != nil {
+					return "Некорректная дата", fmt.Errorf("Не смог разобрать вот это: %s", date)
+				}
+				compareDate = t.AddDate(0, 0, addDays).Format("20060102")
+			}
+			return compareDate, nil
+		case 'm':
 			addMonths, _ := strconv.Atoi(repeat[2:])
 			if addMonths < 1 || addMonths > 12 {
 				return "Некорректное значение повтора. Допускается от 1 до 12 месяцев", fmt.Errorf("некорректное значение повтора: %s", repeat)
@@ -113,5 +114,5 @@ func isValidRepeat(repeat string) (string, error) {
 		return "adv", nil
 	}
 
-	return "", fmt.Errorf("неправильный формат повтора: %s", repeat)
+	return "", fmt.Errorf("Неверный формат повтора: %s", repeat)
 }
