@@ -66,13 +66,13 @@ func mmm(now time.Time, nd NextDate) (string, error) {
 	if len(months) > 0 {
 		for _, m := range months {
 			for _, d := range months {
-				nextDates = append(nextDates, FindDayOfMonth(now, nd.date, m, d))
+				nextDates = append(nextDates, searchDayOfMonth(now, nd.date, m, d))
 			}
 		}
 	} else if len(monthDays) > 0 {
 		for _, d := range monthDays {
 			log.Println("d=", d)
-			nextDates = append(nextDates, FindDayOfMonth(now, nd.date, 0, d))
+			nextDates = append(nextDates, searchDayOfMonth(now, nd.date, 0, d))
 		}
 	}
 
@@ -106,49 +106,43 @@ func findNearestDate(now time.Time, date string, dates []time.Time) time.Time {
 	return nearestDate
 }
 
-func FindDayOfMonth(now time.Time, date string, month, repeat int) time.Time {
-	strNow := now.Format("20060102")
-	strSearchDay := date
-
-	log.Println("Повторять каждое число месяца: ", repeat)
-
-	searchDay, err := time.Parse("20060102", date)
-	log.Println("Парсим date в searchDay=", searchDay, " и начинаем искать от нее")
+func searchDayOfMonth(now time.Time, date string, month, repeat int) time.Time {
+	maxDate, err := time.Parse("20060102", date)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
-	for strSearchDay <= strNow && strSearchDay <= date {
-
-		log.Println("Добавляем 1 месяц в searchDay=", searchDay)
-		if repeat > 0 {
-			//searchDay = time.Date(searchDay.Year(), time.Month(month), repeat, 0, 0, 0, 0, time.UTC)
-			searchDay = searchDay.AddDate(0, 1, 0)
-			if month == 0 {
-				month = int(searchDay.Month())
-				log.Println(month)
-			}
-		}
-		//if repeat < 0 {
-		//	searchDay = searchDay.AddDate(0, 1, 0)
-		//	searchDay = time.Date(searchDay.Year(), time.Month(month), 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, repeat)
-		//	log.Println("устанавливаем год и месяц от date в searchDay и пишем туда же дату повтора -- ", searchDay)
-		//}
-		//strSearchDay = searchDay.Format("20060102")
-		log.Println("strSearchDay=", strSearchDay)
+	if now.After(maxDate) {
+		maxDate = now
 	}
 
-	searchDay, err = time.Parse("20060102", strSearchDay)
-
-	if err != nil {
-		fmt.Println(err)
+	log.Println(maxDate)
+	if month == 0 {
+		month = int(maxDate.Month())
 	}
+
+	searchDay := time.Date(maxDate.Year(), time.Month(month), repeat, 0, 0, 0, 0, time.UTC)
+	//log.Println("searchDay=", searchDay)
+	daysInThisMonth := daysInMonth(maxDate.Year(), time.Month(month))
+	if repeat > daysInThisMonth {
+		searchDay = searchDay.AddDate(0, +1, repeat)
+	}
+	log.Println("searchDay=", searchDay)
+
 	return searchDay
+}
+
+func daysInMonth(year int, month time.Month) int {
+	// Создаем дату с первым днем следующего месяца
+	nextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, time.UTC)
+	// Переходим на предыдущий день, чтобы получить последний день текущего месяца
+	lastDayOfMonth := nextMonth.AddDate(0, 0, -1)
+	return lastDayOfMonth.Day()
 }
 
 func main() {
 	now, _ := time.Parse("20060102", "20240126")
-	searchWeekday, _ := mmm(now, NextDate{"20230106", "m 13", "20240213"})
-	fmt.Println(searchWeekday, "want 20230213")
+	searchWeekday, _ := mmm(now, NextDate{"20240329", "m 10,17 12,8,1", "20240810"})
+	fmt.Println(searchWeekday)
 
 	//{"20231106", "m 13", "20240213"},
 	//{"20240120", "m 40,11,19", ""},
