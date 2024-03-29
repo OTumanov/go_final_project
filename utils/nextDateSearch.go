@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	ERR_INVALID_REPEAT_VALUE                 = "Некорректное значение повтора."
-	ERR_REPEAT                               = "Обрати внимание вот сюда: %v."
-	ERR_REPEAT_NOT_SET                       = "Не задан повтор."
+	ERR_INVALID_REPEAT_VALUE = "Некорректное значение повтора."
+	ERR_REPEAT               = "Обрати внимание вот сюда: %v."
+	//ERR_REPEAT_NOT_SET                       = "Не задан повтор."
 	ALLOWED_DAYS_RANGE                       = "Допускается от 1 до 400 дней."
 	ALLOWED_WEEKDAYS_RANGE                   = "Допускается w <через запятую от 1 до 7>."
 	ALLOWED_DAYS_AND_MONTH_RANGE             = "m <через запятую от 1 до 31,-1,-2> [через запятую от 1 до 12]"
@@ -34,15 +35,15 @@ const (
 	FIRST_DAY                                = 1
 	MINUS_ONE_DAY                            = -1
 	ADDING_ONE_MOUNTH                        = 1
-	MIN_REPEAT_LEN                           = 3
-	MIN_REPEAT_INTERVAL_DAYS                 = 1
-	MAX_REPEAT_INTERVAL_DAY                  = 31
-	MIN_MINUS_REPEAT_INTERVAL_DAY            = -2
-	MAX_REPEAT_INTERVAL_DAYS                 = 400
-	MIN_MONTHS                               = 1
-	MAX_MONTHS                               = 12
-	MIN_WEEK                                 = 1
-	MAX_WEEK                                 = 7
+	//MIN_REPEAT_LEN                           = 3
+	MIN_REPEAT_INTERVAL_DAYS      = 1
+	MAX_REPEAT_INTERVAL_DAY       = 31
+	MIN_MINUS_REPEAT_INTERVAL_DAY = -2
+	MAX_REPEAT_INTERVAL_DAYS      = 400
+	MIN_MONTHS                    = 1
+	MAX_MONTHS                    = 12
+	MIN_WEEK                      = 1
+	MAX_WEEK                      = 7
 	ONE_WEEK
 )
 
@@ -53,8 +54,12 @@ type NextDate struct {
 }
 
 func NextDateSearch(now time.Time, date, repeat string) (string, error) {
-	if isRepeat(repeat) {
-		return ERR_REPEAT_NOT_SET, fmt.Errorf(ERR_REPEAT, repeat)
+
+	if repeat == "" {
+		return time.Now().Format(DATE_FORMAT_YYYYMMDD), nil
+	}
+	if !regexp.MustCompile(`^(w|d|m|y)(\s+\S*)?$`).MatchString(repeat) {
+		return "не прокатило", fmt.Errorf("херовый повтор", repeat)
 	}
 
 	switch repeat[0] {
@@ -71,12 +76,10 @@ func NextDateSearch(now time.Time, date, repeat string) (string, error) {
 		repeatIntervalMonths, err := findRepeatIntervalMonths(now, NextDate{date, repeat, ""})
 		return repeatIntervalMonths, err
 	default:
-		return ERR_INVALID_REPEAT_VALUE, fmt.Errorf(ERR_REPEAT, repeat)
+		return "", nil
 	}
 }
-func isRepeat(repeat string) bool {
-	return repeat == "" || len(repeat) < MIN_REPEAT_LEN && repeat != "y"
-}
+
 func findRepeatIntervalDays(now time.Time, nd NextDate) (string, error) {
 	stringRepeatIntervalDays := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_D_)
 	repeatIntervalDays, err := strconv.Atoi(stringRepeatIntervalDays)
