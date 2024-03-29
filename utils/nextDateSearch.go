@@ -21,29 +21,29 @@ const (
 	ERROR_PARSE_DATE                         = "Не смог разобрать вот это: %s."
 	MONTH_NUMBER_RANGE                       = "Допускается m <через запятую от 1 до 12>."
 	WRONG_DATE                               = "некорректная дата создания события: %v"
-	ADDING_ONE_MOUNTH                        = 1
-	MINUS_ONE_DAY                            = -1
+	PREFIX_REPEAT_M_                         = "m "
+	PREFIX_REPEAT_D_                         = "d "
+	PREFIX_REPEAT_W_                         = "w "
+	PREFIX_DAY                               = 'd'
+	PREFIX_WEEK                              = 'w'
+	PREFIX_MONTH                             = 'm'
+	PREFIX_YEAR                              = 'y'
+	SEPARATOR_SPACE                          = " "
+	SEPARATOR_COMMA                          = ","
+	DATE_FORMAT_YYYYMMDD                     = "20060102"
 	FIRST_DAY                                = 1
+	MINUS_ONE_DAY                            = -1
+	ADDING_ONE_MOUNTH                        = 1
 	MIN_REPEAT_LEN                           = 3
 	MIN_REPEAT_INTERVAL_DAYS                 = 1
 	MAX_REPEAT_INTERVAL_DAY                  = 31
 	MIN_MINUS_REPEAT_INTERVAL_DAY            = -2
 	MAX_REPEAT_INTERVAL_DAYS                 = 400
-	PREFIX_DAY                               = 'd'
-	PREFIX_WEEK                              = 'w'
-	PREFIX_MONTH                             = 'm'
-	PREFIX_YEAR                              = 'y'
-	DATE_FORMAT_YYYYMMDD                     = "20060102"
-	PREFIX_M_                                = "m "
-	PREFIX_D_                                = "d "
-	PREFIX_W_                                = "w "
-	SEPARATOR_SPACE                          = " "
-	SEPARATOR_COMMA                          = ","
 	MIN_MONTHS                               = 1
 	MAX_MONTHS                               = 12
 	MIN_WEEK                                 = 1
 	MAX_WEEK                                 = 7
-	WEEK
+	ONE_WEEK
 )
 
 type NextDate struct {
@@ -78,7 +78,7 @@ func isRepeat(repeat string) bool {
 	return repeat == "" || len(repeat) < MIN_REPEAT_LEN && repeat != "y"
 }
 func findRepeatIntervalDays(now time.Time, nd NextDate) (string, error) {
-	stringRepeatIntervalDays := strings.TrimPrefix(nd.repeat, PREFIX_D_)
+	stringRepeatIntervalDays := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_D_)
 	repeatIntervalDays, err := strconv.Atoi(stringRepeatIntervalDays)
 	if err != nil {
 		return ERR_INVALID_REPEAT_VALUE, fmt.Errorf(ERR_REPEAT, nd.repeat)
@@ -98,7 +98,7 @@ func findRepeatIntervalDays(now time.Time, nd NextDate) (string, error) {
 	return searchDate, nil
 }
 func findRepeatIntervalMonths(now time.Time, nd NextDate) (string, error) {
-	repeatSrt := strings.TrimPrefix(nd.repeat, PREFIX_M_)
+	repeatSrt := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_M_)
 	isConstainsNumMonth := strings.Contains(repeatSrt, SEPARATOR_SPACE)
 	monthsSlice := make([]string, 0)
 	months := make([]int, 0)
@@ -156,7 +156,7 @@ func findRepeatIntervalMonths(now time.Time, nd NextDate) (string, error) {
 	return findNearestDate.Format(DATE_FORMAT_YYYYMMDD), nil
 }
 func findRepeatIntervalWeeks(now time.Time, nd NextDate) (string, error) {
-	weekdayNumber := strings.TrimPrefix(nd.repeat, PREFIX_W_)
+	weekdayNumber := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_W_)
 	weekDaysSlice := strings.Split(weekdayNumber, SEPARATOR_COMMA)
 
 	for _, v := range weekDaysSlice {
@@ -196,11 +196,11 @@ func findNextWeekDay(now time.Time, date string, weekday int) (string, error) {
 		return "", fmt.Errorf(WRONG_DATE, err)
 	}
 	currentWeekday := int(now.Weekday())
-	daysUntilWeekday := (weekday - currentWeekday + WEEK) % WEEK
+	daysUntilWeekday := (weekday - currentWeekday + ONE_WEEK) % ONE_WEEK
 	nextWeekday := now.AddDate(0, 0, daysUntilWeekday)
 
 	if nextWeekday.Before(eventDate) {
-		nextWeekday = eventDate.AddDate(0, 0, (WEEK-currentWeekday+weekday)%WEEK)
+		nextWeekday = eventDate.AddDate(0, 0, (ONE_WEEK-currentWeekday+weekday)%ONE_WEEK)
 	}
 
 	return nextWeekday.Format(DATE_FORMAT_YYYYMMDD), nil
