@@ -1,8 +1,9 @@
 package main
 
 import (
+	_ "github.com/OTumanov/go_final_project/model"
 	"github.com/OTumanov/go_final_project/utils"
-	_ "github.com/mattn/go-sqlite3"
+
 	"log"
 )
 

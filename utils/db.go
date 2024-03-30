@@ -2,10 +2,14 @@ package utils
 
 import (
 	"database/sql"
+	"fmt"
+	"github.com/OTumanov/go_final_project/model"
 	"github.com/OTumanov/go_final_project/settings"
 	"log"
 	"os"
 	"path/filepath"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -22,7 +26,8 @@ const (
 	INDEX_CREATION_ERROR                  = "Упс!.. Ошбика при создании индекса: "
 	SQL_CREATE_TABLES                     = "CREATE TABLE IF NOT EXISTS scheduler " +
 		"(id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-		"date DATE, title TEXT, " +
+		"date TEXT, " +
+		"title TEXT, " +
 		"comment TEXT, " +
 		"repeat VARCHAR(128));"
 )
@@ -89,4 +94,22 @@ func EnvDBFILE(key string) string {
 		log.Println(DB_NAME_SET + dbName)
 	}
 	return dbName
+}
+
+func addingTask(db *sql.DB, task model.Task) (int64, error) {
+	res, err := db.Exec("INSERT INTO scheduler (date, title, comment, repeat) VALUES (?, ?, ?, ?)",
+		task.Date, task.Title, task.Comment, task.Repeat)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(res.LastInsertId())
+	return res.LastInsertId()
+}
+
+func getDB() *sql.DB {
+	db, err := sql.Open(SQL_DRIVER, EnvDBFILE(ENV_DBFILE))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
 }
