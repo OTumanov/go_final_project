@@ -1,21 +1,17 @@
 package main
 
 import (
-	"net/http"
-	"os"
+	_ "github.com/OTumanov/go_final_project/model"
+	"github.com/OTumanov/go_final_project/utils"
+
+	"log"
 )
 
-const webDir = "./web"
-
-func listenPort(key string) string {
-	port := ":" + os.Getenv(key)
-	return port
-}
+const START_MESSAGE = "Поехали!!! =)"
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir(webDir)))
-	err := http.ListenAndServe(listenPort("TODO_PORT"), nil)
-	if err != nil {
-		panic(err)
+	log.Println(START_MESSAGE)
+	if utils.CheckDb() {
+		utils.StartHTTPServer()
 	}
 }
