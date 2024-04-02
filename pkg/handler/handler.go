@@ -1,11 +1,12 @@
 package handler
 
 import (
-	"github.com/OTumanov/go_final_project/config"
+	"github.com/spf13/viper"
+	"net/http"
+
 	"github.com/OTumanov/go_final_project/pkg/service"
 
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 type Handler struct {
@@ -19,27 +20,25 @@ func NewHandler(service *service.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 
-	static := router.Group("/")
-	{
-		static.StaticFS("./css", http.Dir(config.WEBDir+"/css"))
-		static.StaticFS("./js", http.Dir(config.WEBDir+"/js"))
-		router.StaticFS("/index.html", http.Dir(config.WEBDir))
-		router.GET("./login.html", h.loginPage)
-		router.GET("./favicon.ico", h.favicon)
-	}
-
 	api := router.Group("/api")
 	{
-		api.POST("/tasks", h.createTask)
 		api.GET("/nextdate", h.NextDate)
+		api.POST("/task", h.createTask)
+	}
+
+	static := router.Group("/")
+	{
+		router.GET("/", h.indexPage)
+		static.StaticFS("./css", http.Dir(viper.Get("WEBDir").(string)+"/css"))
+		static.StaticFS("./js", http.Dir(viper.Get("WEBDir").(string)+"/js"))
+		router.StaticFile("/index.html", "./web/index.html")
+		router.StaticFile("/login.html", "./web/login.html")
+		router.StaticFile("/favicon.ico", "./web/favicon.ico")
+
 	}
 	return router
 }
 
-func (h *Handler) favicon(c *gin.Context) {
-	http.ServeFile(c.Writer, c.Request, "./web/favicon.ico")
-}
-
-func (h *Handler) loginPage(c *gin.Context) {
-	http.ServeFile(c.Writer, c.Request, "./web/login.html")
+func (h *Handler) indexPage(c *gin.Context) {
+	http.ServeFile(c.Writer, c.Request, "./web/index.html")
 }

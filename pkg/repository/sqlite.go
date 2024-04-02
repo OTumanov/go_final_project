@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/OTumanov/go_final_project/config"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sirupsen/logrus"
@@ -22,32 +20,12 @@ const (
 	FAILED_TO_OPEN_DATABASE               = "Не удалось открыть БД: "
 	TABLE_CREATION_ERROR                  = "Упс!.. Ошбика при создании таблицы: "
 	INDEX_CREATION_ERROR                  = "Упс!.. Ошбика при создании индекса: "
-
-	taskTable   = "scheduler"
-	taskDate    = "date"
-	taskTitle   = "title"
-	taskComment = "comment"
-	taskRepeat  = "repeat"
+	taskTable                             = "scheduler"
 )
 
 type Config struct {
 	SQLDriver string
 	DBFile    string
-}
-
-func NewSqlite(config *Config) (*sqlx.DB, error) {
-	dbName := EnvDBFILE(ENV_DBFILE)
-
-	db, err := sqlx.Connect(config.SQLDriver, dbName)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	if err := db.Ping(); err != nil {
-		logrus.Fatal(err)
-	}
-
-	return db, nil
 }
 
 func GetDB() *sqlx.DB {
@@ -97,13 +75,13 @@ func installDB(dbName string) (bool, error) {
 	}
 	defer db.Close()
 
-	createTableSQL := config.SQLCreateTables
+	createTableSQL := viper.Get("DB.SQLCreateTables").(string)
 	_, err = db.Exec(createTableSQL)
 	if err != nil {
 		logrus.Fatal(TABLE_CREATION_ERROR, err)
 	}
 
-	createIndexSQL := config.SQLCreateIndexes
+	createIndexSQL := viper.Get("DB.SQLCreateIndexes").(string)
 	_, err = db.Exec(createIndexSQL)
 	if err != nil {
 		logrus.Fatal(INDEX_CREATION_ERROR, err)

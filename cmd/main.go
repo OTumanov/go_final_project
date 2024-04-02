@@ -27,9 +27,7 @@ func main() {
 	r := repository.NewRepository(repository.GetDB())
 	s := service.NewService(r)
 	handlers := handler.NewHandler(s)
-
 	serv := new(app.Server)
-
 	if err := serv.Run(port, handlers.InitRoutes()); err != nil {
 		log.Fatal(err)
 	}
