@@ -20,6 +20,6 @@ func (t *TaskService) CreateTask(task model.Task) (int64, error) {
 	return t.repo.CreateTask(task)
 }
 
-func (t *TaskService) GetTasks() (model.ListTodoTask, error) {
-	return t.repo.GetTasks()
+func (t *TaskService) GetTasks(search string) (model.ListTodoTask, error) {
+	return t.repo.GetTasks(search)
 }

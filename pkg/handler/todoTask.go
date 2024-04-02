@@ -41,8 +41,9 @@ func (h *Handler) createTask(c *gin.Context) {
 
 }
 func (h *Handler) getTasks(context *gin.Context) {
+	search := context.Query("search")
 
-	list, err := h.service.TodoTask.GetTasks()
+	list, err := h.service.TodoTask.GetTasks(search)
 	if err != nil {
 		logrus.Error(err)
 		NewResponseError(context, http.StatusBadRequest, err.Error())
