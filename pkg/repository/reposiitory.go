@@ -9,7 +9,7 @@ import (
 type TodoTask interface {
 	NextDate(nd model.NextDate) (string, error)
 	CreateTask(task model.Task) (int64, error)
-	GetTasks() (model.ListTodoTask, error)
+	GetTasks(search string) (model.ListTodoTask, error)
 }
 
 type Repository struct {

@@ -23,8 +23,8 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	api := router.Group("/api")
 	{
 		api.GET("/nextdate", h.nextDate)
-		api.POST("/task", h.createTask)
 		api.GET("/tasks", h.getTasks)
+		api.POST("/task", h.createTask)
 	}
 
 	static := router.Group("/")

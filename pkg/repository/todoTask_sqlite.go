@@ -37,6 +37,7 @@ const (
 	SEPARATOR_SPACE                          = " "
 	SEPARATOR_COMMA                          = ","
 	DATE_FORMAT_YYYYMMDD                     = `20060102`
+	DATE_FORMAT_YYYY_MM_DD                   = `02.01.2006`
 	FIRST_DAY                                = 1
 	MINUS_ONE_DAY                            = -1
 	ADDING_ONE_MOUNTH                        = 1
@@ -133,12 +134,40 @@ func (t *TodoTaskSqlite) CreateTask(task model.Task) (int64, error) {
 
 	return id, nil
 }
-func (t *TodoTaskSqlite) GetTasks() (model.ListTodoTask, error) {
+func (t *TodoTaskSqlite) GetTasks(search string) (model.ListTodoTask, error) {
 	var tasks []model.Task
-	query := fmt.Sprintf("SELECT * FROM %s ORDER BY date Limit %d", taskTable, LIMIT_TASKS)
-	err := t.db.Select(&tasks, query)
-	if err != nil {
-		return model.ListTodoTask{}, err
+	var query string
+
+	switch typeSearch(search) {
+	case 0:
+		query = fmt.Sprintf("SELECT * FROM %s ORDER BY date LIMIT ?", taskTable)
+		err := t.db.Select(&tasks, query, LIMIT_TASKS)
+		if err != nil {
+			return model.ListTodoTask{}, err
+		}
+	case 1:
+		s, _ := time.Parse(DATE_FORMAT_YYYY_MM_DD, search)
+		st := s.Format(DATE_FORMAT_YYYYMMDD)
+		query = fmt.Sprintf("SELECT * FROM %s WHERE date = ? ORDER BY date LIMIT ?", taskTable)
+		err := t.db.Select(&tasks, query, st, LIMIT_TASKS)
+		if err != nil {
+			return model.ListTodoTask{}, err
+		}
+	case 2:
+		searchQuery := fmt.Sprintf("%%%s%%", search)
+		query := `SELECT * FROM scheduler WHERE LOWER(title) LIKE ? OR LOWER(comment) LIKE ? ORDER BY date LIMIT ?`
+		rows, err := t.db.Queryx(query, searchQuery, searchQuery, LIMIT_TASKS)
+		if err != nil {
+			return model.ListTodoTask{}, err
+		}
+		for rows.Next() {
+			var task model.Task
+			err := rows.StructScan(&task)
+			if err != nil {
+				return model.ListTodoTask{}, err
+			}
+			tasks = append(tasks, task)
+		}
 	}
 
 	if len(tasks) == 0 {
@@ -361,4 +390,15 @@ func timeNow(nd model.NextDate) (time.Time, error) {
 		return time.Time{}, fmt.Errorf(ERROR_PARSE_DATE, nd.Now)
 	}
 	return now, nil
+}
+
+func typeSearch(str string) int {
+	if str == "" {
+		return 0
+	}
+	_, err := time.Parse(DATE_FORMAT_YYYY_MM_DD, str)
+	if err == nil {
+		return 1
+	}
+	return 2
 }
