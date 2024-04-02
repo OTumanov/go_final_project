@@ -8,12 +8,9 @@ import (
 )
 
 const (
-	API_NEXTDATE                       = "/api/nextdate"
-	API_TASK                           = "/api/task"
 	INFO_GETTING_PORT_FROM_ENVIRONMENT = "Получаем порт из окружения..."
 	INFO_USING_DEFAULT_PORT            = "Порт не задан. Будем использовать из конфига - "
 	PORT_SET                           = "Порт задан - "
-	TITLE_NOT_SET                      = "Заголовок не может быть пустым!"
 )
 
 type Server struct {

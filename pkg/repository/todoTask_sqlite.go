@@ -2,14 +2,16 @@ package repository
 
 import (
 	"fmt"
-	"github.com/OTumanov/go_final_project/pkg/model"
-	"github.com/jmoiron/sqlx"
-	"github.com/sirupsen/logrus"
 	"log"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/OTumanov/go_final_project/pkg/model"
+
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -24,6 +26,7 @@ const (
 	MONTH_NUMBER_RANGE                       = "Допускается m <через запятую от 1 до 12>."
 	WRONG_DATE                               = "некорректная дата создания события: %v"
 	WRONG_REPEAT                             = "Проблемы с форматом повтора, погляди сюда повтор: %v"
+	TASK_NAME_REQUIRED_ERROR_MESSAGE         = "Название задачи не может быть пустым."
 	PREFIX_REPEAT_M_                         = "m "
 	PREFIX_REPEAT_D_                         = "d "
 	PREFIX_REPEAT_W_                         = "w "
@@ -33,7 +36,7 @@ const (
 	PREFIX_YEAR                              = 'y'
 	SEPARATOR_SPACE                          = " "
 	SEPARATOR_COMMA                          = ","
-	DATE_FORMAT_YYYYMMDD                     = "20060102"
+	DATE_FORMAT_YYYYMMDD                     = `20060102`
 	FIRST_DAY                                = 1
 	MINUS_ONE_DAY                            = -1
 	ADDING_ONE_MOUNTH                        = 1
@@ -57,27 +60,11 @@ func NewTodoTaskSqlite(db *sqlx.DB) *TodoTaskSqlite {
 }
 
 func (t *TodoTaskSqlite) NextDate(nd model.NextDate) (string, error) {
-	logrus.Println("Будем работать с текущей датой: ", nd.Now)
-	logrus.Println("Будем работать с датой: ", nd.Date)
-	logrus.Println("Будем работать с повтором: ", nd.Repeat)
-	//
-	//
-	//nowTime, err := time.Parse("20060102", nd.Now)
-	//if err != nil {
-	//	return "", fmt.Errorf(ERROR_PARSE_DATE, err)
-	//}
-	//
-	//logrus.Println("Передаем в метод: ", nd.Now)
-	//logrus.Println("Передаем в метод: ", nd.Date)
-	//logrus.Println("Передаем в метод: ", nd.Repeat)
-	//
-	//return NextDateSearch(nowTime, nd.Date, nd.Repeat)
-
-	return NextDateSearch(nd)
-}
-func NextDateSearch(nd model.NextDate) (string, error) {
-
 	if nd.Repeat == "" {
+		return "", fmt.Errorf(WRONG_REPEAT, nd.Repeat)
+	}
+
+	if !regexp.MustCompile(`^([wdm]\s.*|y)?$`).MatchString(nd.Repeat) {
 		return "", fmt.Errorf(WRONG_REPEAT, nd.Repeat)
 	}
 
@@ -98,6 +85,53 @@ func NextDateSearch(nd model.NextDate) (string, error) {
 		return "", nil
 	}
 }
+func (t *TodoTaskSqlite) CreateTask(task model.Task) (int64, error) {
+	if task.Title == "" {
+		return 0, fmt.Errorf(TASK_NAME_REQUIRED_ERROR_MESSAGE)
+	}
+
+	if !regexp.MustCompile(`^([wdm]\s.*|y)?$`).MatchString(task.Repeat) {
+		return 0, fmt.Errorf(WRONG_REPEAT, task.Repeat)
+	}
+
+	now := time.Now().Format(DATE_FORMAT_YYYYMMDD)
+
+	if task.Date == "" {
+		task.Date = now
+	}
+
+	_, err := time.Parse(DATE_FORMAT_YYYYMMDD, task.Date)
+	if err != nil {
+		return 0, fmt.Errorf(INVALID_DATE_MESSAGE)
+	}
+
+	if task.Date < now {
+		if task.Repeat == "" {
+			task.Date = now
+		}
+		if task.Repeat != "" {
+			nd := model.NextDate{
+				Date:   task.Date,
+				Now:    now,
+				Repeat: task.Repeat,
+			}
+			task.Date, err = t.NextDate(nd)
+			if err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	query := fmt.Sprintf("INSERT INTO %s (title, comment, date, repeat) VALUES ($1, $2, $3, $4) RETURNING id", taskTable)
+	var id int64
+	row := t.db.QueryRow(query, task.Title, task.Comment, task.Date, task.Repeat)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
 func findRepeatIntervalDays(nd model.NextDate) (string, error) {
 	now, err := timeNow(nd)
 	if err != nil {
@@ -212,7 +246,6 @@ func findRepeatIntervalWeeks(nd model.NextDate) (string, error) {
 	return ERR_INVALID_REPEAT_VALUE + ALLOWED_WEEKDAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 }
 func findRepeatIntervalYears(nd model.NextDate) (string, error) {
-
 	now, err := timeNow(nd)
 	if err != nil {
 		return "", err
@@ -220,9 +253,6 @@ func findRepeatIntervalYears(nd model.NextDate) (string, error) {
 
 	formattedNow := now.Format(DATE_FORMAT_YYYYMMDD)
 	searchDate := nd.Date
-	logrus.Println("получили вот такую НАУ ", formattedNow)
-	logrus.Println("получили вот такую дату ", searchDate)
-	logrus.Println("получили вот такую репиту ", nd.Repeat)
 
 	for searchDate <= formattedNow || searchDate <= nd.Date {
 		d, err := time.Parse(DATE_FORMAT_YYYYMMDD, searchDate)

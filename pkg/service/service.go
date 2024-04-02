@@ -7,6 +7,7 @@ import (
 
 type TodoTask interface {
 	NextDate(nd model.NextDate) (string, error)
+	CreateTask(task model.Task) (int64, error)
 }
 
 type Service struct {
