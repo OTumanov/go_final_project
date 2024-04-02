@@ -19,3 +19,7 @@ func (t *TaskService) NextDate(nd model.NextDate) (string, error) {
 func (t *TaskService) CreateTask(task model.Task) (int64, error) {
 	return t.repo.CreateTask(task)
 }
+
+func (t *TaskService) GetTasks() (model.ListTodoTask, error) {
+	return t.repo.GetTasks()
+}

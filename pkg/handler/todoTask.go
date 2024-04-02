@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (h *Handler) NextDate(c *gin.Context) {
+func (h *Handler) nextDate(c *gin.Context) {
 	var nd model.NextDate
 
 	if c.ShouldBindQuery(&nd) == nil {
@@ -40,15 +40,22 @@ func (h *Handler) createTask(c *gin.Context) {
 	c.JSON(200, gin.H{"id": id})
 
 }
+func (h *Handler) getTasks(context *gin.Context) {
 
-//func (h *Handler) deleteTask(c *gin.Context) {
-//}
+	list, err := h.service.TodoTask.GetTasks()
+	if err != nil {
+		logrus.Error(err)
+		NewResponseError(context, http.StatusBadRequest, err.Error())
+		return
+	}
+	context.JSON(200, list)
+}
+
+// func (h *Handler) deleteTask(c *gin.Context) {
+// }
 //
-//func (h *Handler) updateTask(c *gin.Context) {
-//}
+// func (h *Handler) updateTask(c *gin.Context) {
+// }
 //
-//func (h *Handler) getTaskById(c *gin.Context) {
-//}
-//
-//func (h *Handler) getTasks(c *gin.Context) {
-//}
+// func (h *Handler) getTaskById(c *gin.Context) {
+// }
