@@ -1,0 +1,4 @@
+Port: "7540"
+DB:
+  SQLDriver: "sqlite3"
+  DBFile: "../scheduler.db"

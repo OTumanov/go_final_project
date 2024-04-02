@@ -1,19 +1,20 @@
-package utils
+package repository
 
 import (
 	"fmt"
+	"github.com/OTumanov/go_final_project/pkg/model"
+	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	"log"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	ERR_INVALID_REPEAT_VALUE = "Некорректное значение повтора."
-	ERR_REPEAT               = "Обрати внимание вот сюда: %v."
-	//ERR_REPEAT_NOT_SET                       = "Не задан повтор."
+	ERR_INVALID_REPEAT_VALUE                 = "Некорректное значение повтора."
+	ERR_REPEAT                               = "Обрати внимание вот сюда: %v."
 	ALLOWED_DAYS_RANGE                       = "Допускается от 1 до 400 дней."
 	ALLOWED_WEEKDAYS_RANGE                   = "Допускается w <через запятую от 1 до 7>."
 	ALLOWED_DAYS_AND_MONTH_RANGE             = "m <через запятую от 1 до 31,-1,-2> [через запятую от 1 до 12]"
@@ -22,6 +23,7 @@ const (
 	ERROR_PARSE_DATE                         = "Не смог разобрать вот это: %s."
 	MONTH_NUMBER_RANGE                       = "Допускается m <через запятую от 1 до 12>."
 	WRONG_DATE                               = "некорректная дата создания события: %v"
+	WRONG_REPEAT                             = "Проблемы с форматом повтора, погляди сюда повтор: %v"
 	PREFIX_REPEAT_M_                         = "m "
 	PREFIX_REPEAT_D_                         = "d "
 	PREFIX_REPEAT_W_                         = "w "
@@ -35,73 +37,97 @@ const (
 	FIRST_DAY                                = 1
 	MINUS_ONE_DAY                            = -1
 	ADDING_ONE_MOUNTH                        = 1
-	//MIN_REPEAT_LEN                           = 3
-	MIN_REPEAT_INTERVAL_DAYS      = 1
-	MAX_REPEAT_INTERVAL_DAY       = 31
-	MIN_MINUS_REPEAT_INTERVAL_DAY = -2
-	MAX_REPEAT_INTERVAL_DAYS      = 400
-	MIN_MONTHS                    = 1
-	MAX_MONTHS                    = 12
-	MIN_WEEK                      = 1
-	MAX_WEEK                      = 7
+	MIN_REPEAT_INTERVAL_DAYS                 = 1
+	MAX_REPEAT_INTERVAL_DAY                  = 31
+	MIN_MINUS_REPEAT_INTERVAL_DAY            = -2
+	MAX_REPEAT_INTERVAL_DAYS                 = 400
+	MIN_MONTHS                               = 1
+	MAX_MONTHS                               = 12
+	MIN_WEEK                                 = 1
+	MAX_WEEK                                 = 7
 	ONE_WEEK
 )
 
-type NextDate struct {
-	date   string
-	repeat string
-	want   string
+type TodoTaskSqlite struct {
+	db *sqlx.DB
 }
 
-func NextDateSearch(now time.Time, date, repeat string) (string, error) {
+func NewTodoTaskSqlite(db *sqlx.DB) *TodoTaskSqlite {
+	return &TodoTaskSqlite{db: db}
+}
 
-	if repeat == "" {
-		return time.Now().Format(DATE_FORMAT_YYYYMMDD), nil
-	}
-	if !regexp.MustCompile(`^(w|d|m|y)(\s+\S*)?$`).MatchString(repeat) {
-		return "не прокатило", fmt.Errorf("херовый повтор", repeat)
+func (t *TodoTaskSqlite) NextDate(nd model.NextDate) (string, error) {
+	logrus.Println("Будем работать с текущей датой: ", nd.Now)
+	logrus.Println("Будем работать с датой: ", nd.Date)
+	logrus.Println("Будем работать с повтором: ", nd.Repeat)
+	//
+	//
+	//nowTime, err := time.Parse("20060102", nd.Now)
+	//if err != nil {
+	//	return "", fmt.Errorf(ERROR_PARSE_DATE, err)
+	//}
+	//
+	//logrus.Println("Передаем в метод: ", nd.Now)
+	//logrus.Println("Передаем в метод: ", nd.Date)
+	//logrus.Println("Передаем в метод: ", nd.Repeat)
+	//
+	//return NextDateSearch(nowTime, nd.Date, nd.Repeat)
+
+	return NextDateSearch(nd)
+}
+func NextDateSearch(nd model.NextDate) (string, error) {
+
+	if nd.Repeat == "" {
+		return "", fmt.Errorf(WRONG_REPEAT, nd.Repeat)
 	}
 
-	switch repeat[0] {
+	switch nd.Repeat[0] {
 	case PREFIX_DAY:
-		repeatIntervalDays, err := findRepeatIntervalDays(now, NextDate{date, repeat, ""})
+		repeatIntervalDays, err := findRepeatIntervalDays(nd)
 		return repeatIntervalDays, err
 	case PREFIX_YEAR:
-		repeatIntervalYears, err := findRepeatIntervalYears(now, NextDate{date, repeat, ""})
+		repeatIntervalYears, err := findRepeatIntervalYears(nd)
 		return repeatIntervalYears, err
 	case PREFIX_WEEK:
-		repeatIntervalWeeks, err := findRepeatIntervalWeeks(now, NextDate{date, repeat, ""})
+		repeatIntervalWeeks, err := findRepeatIntervalWeeks(nd)
 		return repeatIntervalWeeks, err
 	case PREFIX_MONTH:
-		repeatIntervalMonths, err := findRepeatIntervalMonths(now, NextDate{date, repeat, ""})
+		repeatIntervalMonths, err := findRepeatIntervalMonths(nd)
 		return repeatIntervalMonths, err
 	default:
 		return "", nil
 	}
 }
-
-func findRepeatIntervalDays(now time.Time, nd NextDate) (string, error) {
-	stringRepeatIntervalDays := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_D_)
+func findRepeatIntervalDays(nd model.NextDate) (string, error) {
+	now, err := timeNow(nd)
+	if err != nil {
+		return "", err
+	}
+	stringRepeatIntervalDays := strings.TrimPrefix(nd.Repeat, PREFIX_REPEAT_D_)
 	repeatIntervalDays, err := strconv.Atoi(stringRepeatIntervalDays)
 	if err != nil {
-		return ERR_INVALID_REPEAT_VALUE, fmt.Errorf(ERR_REPEAT, nd.repeat)
+		return ERR_INVALID_REPEAT_VALUE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 	}
 	if repeatIntervalDays < MIN_REPEAT_INTERVAL_DAYS || repeatIntervalDays > MAX_REPEAT_INTERVAL_DAYS {
-		return ERR_INVALID_REPEAT_VALUE + ALLOWED_DAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.repeat)
+		return ERR_INVALID_REPEAT_VALUE + ALLOWED_DAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 	}
-	searchDate := nd.date
+	searchDate := nd.Date
 
-	for searchDate <= now.Format(DATE_FORMAT_YYYYMMDD) || searchDate <= nd.date {
+	for searchDate <= now.Format(DATE_FORMAT_YYYYMMDD) || searchDate <= nd.Date {
 		d, err := time.Parse(DATE_FORMAT_YYYYMMDD, searchDate)
 		if err != nil {
-			return INVALID_DATE_MESSAGE, fmt.Errorf(ERROR_PARSE_DATE, nd.date)
+			return INVALID_DATE_MESSAGE, fmt.Errorf(ERROR_PARSE_DATE, nd.Date)
 		}
 		searchDate = d.AddDate(0, 0, repeatIntervalDays).Format(DATE_FORMAT_YYYYMMDD)
 	}
 	return searchDate, nil
 }
-func findRepeatIntervalMonths(now time.Time, nd NextDate) (string, error) {
-	repeatSrt := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_M_)
+func findRepeatIntervalMonths(nd model.NextDate) (string, error) {
+	now, err := timeNow(nd)
+	if err != nil {
+		return "", err
+	}
+	repeatSrt := strings.TrimPrefix(nd.Repeat, PREFIX_REPEAT_M_)
 	isConstainsNumMonth := strings.Contains(repeatSrt, SEPARATOR_SPACE)
 	monthsSlice := make([]string, 0)
 	months := make([]int, 0)
@@ -118,7 +144,7 @@ func findRepeatIntervalMonths(now time.Time, nd NextDate) (string, error) {
 			}
 			if vi < MIN_MONTHS || vi > MAX_MONTHS {
 				return ERR_INVALID_REPEAT_VALUE + MONTH_NUMBER_RANGE,
-					fmt.Errorf(ERR_REPEAT, nd.repeat)
+					fmt.Errorf(ERR_REPEAT, nd.Repeat)
 			}
 			months = append(months, vi)
 		}
@@ -134,7 +160,7 @@ func findRepeatIntervalMonths(now time.Time, nd NextDate) (string, error) {
 			return UNABLE_TO_CONVERT_REPEAT_TO_NUMBER_ERROR, err
 		}
 		if vi < MIN_MINUS_REPEAT_INTERVAL_DAY || vi > MAX_REPEAT_INTERVAL_DAY {
-			return ERR_INVALID_REPEAT_VALUE + ALLOWED_DAYS_AND_MONTH_RANGE, fmt.Errorf(ERR_REPEAT, nd.repeat)
+			return ERR_INVALID_REPEAT_VALUE + ALLOWED_DAYS_AND_MONTH_RANGE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 		}
 		monthDays = append(monthDays, vi)
 	}
@@ -145,21 +171,26 @@ func findRepeatIntervalMonths(now time.Time, nd NextDate) (string, error) {
 			m := months[i]
 			for j := 0; j < len(monthDays); j++ {
 				d := monthDays[j]
-				nd := findDayOfMonth(now, nd.date, m, d)
+				nd := findDayOfMonth(now, nd.Date, m, d)
 				nextDates = append(nextDates, nd)
 			}
 		}
 	} else if len(monthDays) > 0 {
 		for _, d := range monthDays {
-			nextDates = append(nextDates, findDayOfMonth(now, nd.date, 0, d))
+			nextDates = append(nextDates, findDayOfMonth(now, nd.Date, 0, d))
 		}
 	}
 
-	findNearestDate := findNearestDate(now, nd.date, nextDates)
+	findNearestDate := findNearestDate(now, nd.Date, nextDates)
 	return findNearestDate.Format(DATE_FORMAT_YYYYMMDD), nil
 }
-func findRepeatIntervalWeeks(now time.Time, nd NextDate) (string, error) {
-	weekdayNumber := strings.TrimPrefix(nd.repeat, PREFIX_REPEAT_W_)
+func findRepeatIntervalWeeks(nd model.NextDate) (string, error) {
+	now, err := timeNow(nd)
+	if err != nil {
+		return "", err
+	}
+
+	weekdayNumber := strings.TrimPrefix(nd.Repeat, PREFIX_REPEAT_W_)
 	weekDaysSlice := strings.Split(weekdayNumber, SEPARATOR_COMMA)
 
 	for _, v := range weekDaysSlice {
@@ -168,26 +199,35 @@ func findRepeatIntervalWeeks(now time.Time, nd NextDate) (string, error) {
 			return UNABLE_TO_CONVERT_REPEAT_TO_NUMBER_ERROR, err
 		}
 		if vi < MIN_WEEK || vi > MAX_WEEK {
-			return ERR_INVALID_REPEAT_VALUE + ALLOWED_WEEKDAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.repeat)
+			return ERR_INVALID_REPEAT_VALUE + ALLOWED_WEEKDAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 		}
-		findWeekday, err := findNextWeekDay(now, nd.date, vi)
+		findWeekday, err := findNextWeekDay(now, nd.Date, vi)
 		if err != nil {
-			return ERR_INVALID_REPEAT_VALUE, fmt.Errorf(ERR_REPEAT, nd.repeat)
+			return ERR_INVALID_REPEAT_VALUE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 		}
-		if findWeekday > nd.date && findWeekday > now.Format(DATE_FORMAT_YYYYMMDD) {
+		if findWeekday > nd.Date && findWeekday > now.Format(DATE_FORMAT_YYYYMMDD) {
 			return findWeekday, nil
 		}
 	}
-	return ERR_INVALID_REPEAT_VALUE + ALLOWED_WEEKDAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.repeat)
+	return ERR_INVALID_REPEAT_VALUE + ALLOWED_WEEKDAYS_RANGE, fmt.Errorf(ERR_REPEAT, nd.Repeat)
 }
-func findRepeatIntervalYears(now time.Time, nd NextDate) (string, error) {
-	formattedNow := now.Format(DATE_FORMAT_YYYYMMDD)
-	searchDate := nd.date
+func findRepeatIntervalYears(nd model.NextDate) (string, error) {
 
-	for searchDate <= formattedNow || searchDate <= nd.date {
+	now, err := timeNow(nd)
+	if err != nil {
+		return "", err
+	}
+
+	formattedNow := now.Format(DATE_FORMAT_YYYYMMDD)
+	searchDate := nd.Date
+	logrus.Println("получили вот такую НАУ ", formattedNow)
+	logrus.Println("получили вот такую дату ", searchDate)
+	logrus.Println("получили вот такую репиту ", nd.Repeat)
+
+	for searchDate <= formattedNow || searchDate <= nd.Date {
 		d, err := time.Parse(DATE_FORMAT_YYYYMMDD, searchDate)
 		if err != nil {
-			return INVALID_DATE_MESSAGE, fmt.Errorf(ERR_REPEAT, nd.date)
+			return INVALID_DATE_MESSAGE, fmt.Errorf(ERR_REPEAT, nd.Date)
 		}
 		searchDate = d.AddDate(1, 0, 0).Format(DATE_FORMAT_YYYYMMDD)
 	}
@@ -266,4 +306,15 @@ func findNearestDate(now time.Time, date string, dates []time.Time) time.Time {
 		}
 	}
 	return nearestDate
+}
+func timeNow(nd model.NextDate) (time.Time, error) {
+	var now time.Time
+	if nd.Now == "" {
+		now = time.Now()
+	}
+	now, err := time.Parse(DATE_FORMAT_YYYYMMDD, nd.Now)
+	if err != nil {
+		return time.Time{}, fmt.Errorf(ERROR_PARSE_DATE, nd.Now)
+	}
+	return now, nil
 }
