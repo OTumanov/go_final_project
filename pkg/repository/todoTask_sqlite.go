@@ -49,6 +49,7 @@ const (
 	MIN_WEEK                                 = 1
 	MAX_WEEK                                 = 7
 	ONE_WEEK
+	LIMIT_TASKS = 25
 )
 
 type TodoTaskSqlite struct {
@@ -123,15 +124,28 @@ func (t *TodoTaskSqlite) CreateTask(task model.Task) (int64, error) {
 	}
 
 	query := fmt.Sprintf("INSERT INTO %s (title, comment, date, repeat) VALUES ($1, $2, $3, $4) RETURNING id", taskTable)
-	var id int64
 	row := t.db.QueryRow(query, task.Title, task.Comment, task.Date, task.Repeat)
+
+	var id int64
 	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
 
 	return id, nil
 }
+func (t *TodoTaskSqlite) GetTasks() (model.ListTodoTask, error) {
+	var tasks []model.Task
+	query := fmt.Sprintf("SELECT * FROM %s ORDER BY date Limit %d", taskTable, LIMIT_TASKS)
+	err := t.db.Select(&tasks, query)
+	if err != nil {
+		return model.ListTodoTask{}, err
+	}
 
+	if len(tasks) == 0 {
+		return model.ListTodoTask{Tasks: []model.Task{}}, nil
+	}
+	return model.ListTodoTask{Tasks: tasks}, nil
+}
 func findRepeatIntervalDays(nd model.NextDate) (string, error) {
 	now, err := timeNow(nd)
 	if err != nil {
