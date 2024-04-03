@@ -1,14 +1,15 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"log"
 
 	"github.com/OTumanov/go_final_project"
 	"github.com/OTumanov/go_final_project/pkg/handler"
 	"github.com/OTumanov/go_final_project/pkg/repository"
 	"github.com/OTumanov/go_final_project/pkg/service"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 const (
