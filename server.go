@@ -1,10 +1,11 @@
 package app
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"net/http"
 	"os"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 const (
