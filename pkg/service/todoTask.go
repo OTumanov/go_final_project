@@ -23,3 +23,11 @@ func (t *TaskService) CreateTask(task model.Task) (int64, error) {
 func (t *TaskService) GetTasks(search string) (model.ListTodoTask, error) {
 	return t.repo.GetTasks(search)
 }
+
+func (t *TaskService) GetTaskById(id string) (model.Task, error) {
+	return t.repo.GetTaskById(id)
+}
+
+func (t *TaskService) UpdateTask(task model.Task) error {
+	return t.repo.UpdateTask(task)
+}
