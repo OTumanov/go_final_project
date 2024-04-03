@@ -9,9 +9,11 @@ import (
 type TodoTask interface {
 	NextDate(nd model.NextDate) (string, error)
 	CreateTask(task model.Task) (int64, error)
-	GetTasks(search string) (model.ListTodoTask, error)
+	GetTasks(search string) (model.ListTasks, error)
 	GetTaskById(id string) (model.Task, error)
 	UpdateTask(task model.Task) error
+	DeleteTask(id string) error
+	TaskDone(id string) error
 }
 
 type Repository struct {

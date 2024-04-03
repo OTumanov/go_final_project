@@ -23,15 +23,19 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	api := router.Group("/api")
 	{
 		api.GET("/nextdate", h.nextDate)
-		api.GET("/tasks", h.getTasks)
-		api.GET("/task", h.getTaskById)
-		api.PUT("/task", h.updateTask)
+
 		api.POST("/task", h.createTask)
+		api.GET("/task", h.getTaskById)
+		api.GET("/tasks", h.getTasks)
+		api.PUT("/task", h.updateTask)
+		api.POST("/task/done", h.taskDone)
+		api.DELETE("/task", h.deleteTask)
 	}
 
 	static := router.Group("/")
 	{
 		router.GET("/", h.indexPage)
+
 		static.StaticFS("./css", http.Dir(viper.Get("WEBDir").(string)+"/css"))
 		static.StaticFS("./js", http.Dir(viper.Get("WEBDir").(string)+"/js"))
 		router.StaticFile("/index.html", "./web/index.html")
