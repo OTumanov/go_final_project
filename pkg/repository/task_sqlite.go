@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"log"
 	"math"
 	"regexp"
@@ -63,7 +64,6 @@ type TodoTaskSqlite struct {
 func NewTodoTaskSqlite(db *sqlx.DB) *TodoTaskSqlite {
 	return &TodoTaskSqlite{db: db}
 }
-
 func (t *TodoTaskSqlite) NextDate(nd model.NextDate) (string, error) {
 	if nd.Repeat == "" {
 		return "", fmt.Errorf(WRONG_REPEAT, nd.Repeat)
@@ -91,7 +91,7 @@ func (t *TodoTaskSqlite) NextDate(nd model.NextDate) (string, error) {
 	}
 }
 func (t *TodoTaskSqlite) CreateTask(task model.Task) (int64, error) {
-	err := t.checkTask(task)
+	err := t.checkTask(&task)
 	if err != nil {
 		return 0, err
 	}
@@ -106,7 +106,7 @@ func (t *TodoTaskSqlite) CreateTask(task model.Task) (int64, error) {
 
 	return id, nil
 }
-func (t *TodoTaskSqlite) GetTasks(search string) (model.ListTodoTask, error) {
+func (t *TodoTaskSqlite) GetTasks(search string) (model.ListTasks, error) {
 	var tasks []model.Task
 	var query string
 
@@ -115,7 +115,7 @@ func (t *TodoTaskSqlite) GetTasks(search string) (model.ListTodoTask, error) {
 		query = fmt.Sprintf("SELECT * FROM %s ORDER BY date LIMIT ?", taskTable)
 		err := t.db.Select(&tasks, query, LIMIT_TASKS)
 		if err != nil {
-			return model.ListTodoTask{}, err
+			return model.ListTasks{}, err
 		}
 	case 1:
 		s, _ := time.Parse(DATE_FORMAT_YYYY_MM_DD, search)
@@ -123,29 +123,29 @@ func (t *TodoTaskSqlite) GetTasks(search string) (model.ListTodoTask, error) {
 		query = fmt.Sprintf("SELECT * FROM %s WHERE date = ? ORDER BY date LIMIT ?", taskTable)
 		err := t.db.Select(&tasks, query, st, LIMIT_TASKS)
 		if err != nil {
-			return model.ListTodoTask{}, err
+			return model.ListTasks{}, err
 		}
 	case 2:
 		searchQuery := fmt.Sprintf("%%%s%%", search)
 		query := `SELECT * FROM scheduler WHERE LOWER(title) LIKE ? OR LOWER(comment) LIKE ? ORDER BY date LIMIT ?`
 		rows, err := t.db.Queryx(query, searchQuery, searchQuery, LIMIT_TASKS)
 		if err != nil {
-			return model.ListTodoTask{}, err
+			return model.ListTasks{}, err
 		}
 		for rows.Next() {
 			var task model.Task
 			err := rows.StructScan(&task)
 			if err != nil {
-				return model.ListTodoTask{}, err
+				return model.ListTasks{}, err
 			}
 			tasks = append(tasks, task)
 		}
 	}
 
 	if len(tasks) == 0 {
-		return model.ListTodoTask{Tasks: []model.Task{}}, nil
+		return model.ListTasks{Tasks: []model.Task{}}, nil
 	}
-	return model.ListTodoTask{Tasks: tasks}, nil
+	return model.ListTasks{Tasks: tasks}, nil
 }
 func (t *TodoTaskSqlite) GetTaskById(id string) (model.Task, error) {
 	if id == "" {
@@ -163,7 +163,7 @@ func (t *TodoTaskSqlite) GetTaskById(id string) (model.Task, error) {
 	return task, err
 }
 func (t *TodoTaskSqlite) UpdateTask(task model.Task) error {
-	err := t.checkTask(task)
+	err := t.checkTask(&task)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,53 @@ func (t *TodoTaskSqlite) UpdateTask(task model.Task) error {
 	}
 	return nil
 }
-func (t *TodoTaskSqlite) checkTask(task model.Task) error {
+func (t *TodoTaskSqlite) DeleteTask(id string) error {
+	_, err := t.GetTaskById(id)
+	if err != nil {
+		return err
+	}
+	queryDelete := fmt.Sprintf("DELETE FROM %s WHERE id = ?", taskTable)
+	_, err = t.db.Exec(queryDelete, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (t *TodoTaskSqlite) TaskDone(id string) error {
+	task, err := t.GetTaskById(id)
+	if err != nil {
+		return err
+	}
+
+	if task.Repeat == "" {
+		queryDeleteTask := fmt.Sprintf("DELETE FROM %s WHERE id = ?", taskTable)
+		logrus.Println(queryDeleteTask)
+		t.db.Exec(queryDeleteTask, id)
+		return nil
+	}
+
+	nd := model.NextDate{
+		Date:   task.Date,
+		Now:    time.Now().Format(DATE_FORMAT_YYYYMMDD),
+		Repeat: task.Repeat,
+	}
+
+	newDate, err := t.NextDate(nd)
+	if err != nil {
+		return err
+	}
+
+	task.Date = newDate
+	queryUpdateTask := fmt.Sprintf("UPDATE %s SET date = ? WHERE id = ?", taskTable)
+	logrus.Println(queryUpdateTask)
+	_, err = t.db.Exec(queryUpdateTask, task.Date, id)
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+func (t *TodoTaskSqlite) checkTask(task *model.Task) error {
 	if task.Title == "" {
 		return fmt.Errorf(TASK_NAME_REQUIRED_ERROR_MESSAGE)
 	}

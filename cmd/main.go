@@ -25,8 +25,8 @@ func main() {
 	}
 
 	port := app.EnvPORT(ENV_PORT)
-	r := repository.NewRepository(repository.GetDB())
-	s := service.NewService(r)
+	repo := repository.NewRepository(repository.GetDB())
+	s := service.NewService(repo)
 	handlers := handler.NewHandler(s)
 	serv := new(app.Server)
 	if err := serv.Run(port, handlers.InitRoutes()); err != nil {

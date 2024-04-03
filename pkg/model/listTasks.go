@@ -1,5 +1,5 @@
 package model
 
-type ListTodoTask struct {
+type ListTasks struct {
 	Tasks []Task `json:"tasks"`
 }
