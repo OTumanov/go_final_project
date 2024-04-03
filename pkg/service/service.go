@@ -9,6 +9,8 @@ type TodoTask interface {
 	NextDate(nd model.NextDate) (string, error)
 	CreateTask(task model.Task) (int64, error)
 	GetTasks(search string) (model.ListTodoTask, error)
+	GetTaskById(id string) (model.Task, error)
+	UpdateTask(task model.Task) error
 }
 
 type Service struct {

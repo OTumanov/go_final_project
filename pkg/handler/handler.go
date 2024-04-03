@@ -24,6 +24,8 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	{
 		api.GET("/nextdate", h.nextDate)
 		api.GET("/tasks", h.getTasks)
+		api.GET("/task", h.getTaskById)
+		api.PUT("/task", h.updateTask)
 		api.POST("/task", h.createTask)
 	}
 

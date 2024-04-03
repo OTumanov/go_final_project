@@ -27,6 +27,9 @@ const (
 	WRONG_DATE                               = "некорректная дата создания события: %v"
 	WRONG_REPEAT                             = "Проблемы с форматом повтора, погляди сюда повтор: %v"
 	TASK_NAME_REQUIRED_ERROR_MESSAGE         = "Название задачи не может быть пустым."
+	TASK_NOT_FOUND_ERROR_MESSAGE             = "Задача не найдена"
+	TASK_ID_REQUIRED_ERROR_MESSAGE           = "Не указан идентификатор"
+	INVALID_TASK_ID_ERROR_MESSAGE            = "Некорректный идентификатор"
 	PREFIX_REPEAT_M_                         = "m "
 	PREFIX_REPEAT_D_                         = "d "
 	PREFIX_REPEAT_W_                         = "w "
@@ -88,47 +91,16 @@ func (t *TodoTaskSqlite) NextDate(nd model.NextDate) (string, error) {
 	}
 }
 func (t *TodoTaskSqlite) CreateTask(task model.Task) (int64, error) {
-	if task.Title == "" {
-		return 0, fmt.Errorf(TASK_NAME_REQUIRED_ERROR_MESSAGE)
-	}
-
-	if !regexp.MustCompile(`^([wdm]\s.*|y)?$`).MatchString(task.Repeat) {
-		return 0, fmt.Errorf(WRONG_REPEAT, task.Repeat)
-	}
-
-	now := time.Now().Format(DATE_FORMAT_YYYYMMDD)
-
-	if task.Date == "" {
-		task.Date = now
-	}
-
-	_, err := time.Parse(DATE_FORMAT_YYYYMMDD, task.Date)
+	err := t.checkTask(task)
 	if err != nil {
-		return 0, fmt.Errorf(INVALID_DATE_MESSAGE)
-	}
-
-	if task.Date < now {
-		if task.Repeat == "" {
-			task.Date = now
-		}
-		if task.Repeat != "" {
-			nd := model.NextDate{
-				Date:   task.Date,
-				Now:    now,
-				Repeat: task.Repeat,
-			}
-			task.Date, err = t.NextDate(nd)
-			if err != nil {
-				return 0, err
-			}
-		}
+		return 0, err
 	}
 
 	query := fmt.Sprintf("INSERT INTO %s (title, comment, date, repeat) VALUES ($1, $2, $3, $4) RETURNING id", taskTable)
 	row := t.db.QueryRow(query, task.Title, task.Comment, task.Date, task.Repeat)
 
 	var id int64
-	if err := row.Scan(&id); err != nil {
+	if err = row.Scan(&id); err != nil {
 		return 0, err
 	}
 
@@ -174,6 +146,72 @@ func (t *TodoTaskSqlite) GetTasks(search string) (model.ListTodoTask, error) {
 		return model.ListTodoTask{Tasks: []model.Task{}}, nil
 	}
 	return model.ListTodoTask{Tasks: tasks}, nil
+}
+func (t *TodoTaskSqlite) GetTaskById(id string) (model.Task, error) {
+	if id == "" {
+		return model.Task{}, fmt.Errorf(TASK_ID_REQUIRED_ERROR_MESSAGE)
+	}
+	if _, err := strconv.Atoi(id); err != nil {
+		return model.Task{}, fmt.Errorf(INVALID_TASK_ID_ERROR_MESSAGE)
+	}
+	var task model.Task
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", taskTable)
+	err := t.db.Get(&task, query, id)
+	if err != nil {
+		return model.Task{}, fmt.Errorf(TASK_NOT_FOUND_ERROR_MESSAGE)
+	}
+	return task, err
+}
+func (t *TodoTaskSqlite) UpdateTask(task model.Task) error {
+	err := t.checkTask(task)
+	if err != nil {
+		return err
+	}
+
+	query := fmt.Sprintf("UPDATE %s SET title = ?, comment = ?, date = ?, repeat = ? WHERE id = ?", taskTable)
+	_, err = t.db.Exec(query, task.Title, task.Comment, task.Date, task.Repeat, task.ID)
+	if err != nil {
+		return fmt.Errorf(TASK_NOT_FOUND_ERROR_MESSAGE)
+	}
+	return nil
+}
+func (t *TodoTaskSqlite) checkTask(task model.Task) error {
+	if task.Title == "" {
+		return fmt.Errorf(TASK_NAME_REQUIRED_ERROR_MESSAGE)
+	}
+
+	if !regexp.MustCompile(`^([wdm]\s.*|y)?$`).MatchString(task.Repeat) {
+		return fmt.Errorf(WRONG_REPEAT, task.Repeat)
+	}
+
+	now := time.Now().Format(DATE_FORMAT_YYYYMMDD)
+
+	if task.Date == "" {
+		task.Date = now
+	}
+
+	_, err := time.Parse(DATE_FORMAT_YYYYMMDD, task.Date)
+	if err != nil {
+		return fmt.Errorf(INVALID_DATE_MESSAGE)
+	}
+
+	if task.Date < now {
+		if task.Repeat == "" {
+			task.Date = now
+		}
+		if task.Repeat != "" {
+			nd := model.NextDate{
+				Date:   task.Date,
+				Now:    now,
+				Repeat: task.Repeat,
+			}
+			task.Date, err = t.NextDate(nd)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 func findRepeatIntervalDays(nd model.NextDate) (string, error) {
 	now, err := timeNow(nd)
@@ -391,7 +429,6 @@ func timeNow(nd model.NextDate) (time.Time, error) {
 	}
 	return now, nil
 }
-
 func typeSearch(str string) int {
 	if str == "" {
 		return 0
