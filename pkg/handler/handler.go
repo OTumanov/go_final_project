@@ -20,7 +20,12 @@ func NewHandler(service *service.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 
-	api := router.Group("/api")
+	auth := router.Group("/api")
+	{
+		auth.POST("/sign", h.login)
+	}
+
+	api := router.Group("/api", h.authMiddleware)
 	{
 		api.GET("/nextdate", h.nextDate)
 
