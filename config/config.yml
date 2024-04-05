@@ -1,7 +1,7 @@
 Port: "7540"
 DB:
   SQLDriver: "sqlite3"
-  DBFile: "scheduler.db"
+  DBFile: "./db/scheduler.db"
   SQLCreateTables: >
     CREATE TABLE IF NOT EXISTS scheduler (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
