@@ -3,8 +3,13 @@ package service
 import (
 	"github.com/OTumanov/go_final_project/pkg/model"
 	"github.com/OTumanov/go_final_project/pkg/repository"
+	"github.com/gin-gonic/gin"
 )
 
+type Authorization interface {
+	CheckAuth(c *gin.Context)
+	ParseToken(token string) (bool, error)
+}
 type TodoTask interface {
 	NextDate(nd model.NextDate) (string, error)
 	CreateTask(task model.Task) (int64, error)
@@ -16,11 +21,13 @@ type TodoTask interface {
 }
 
 type Service struct {
+	Authorization
 	TodoTask
 }
 
 func NewService(repository *repository.Repository) *Service {
 	return &Service{
-		TodoTask: NewTodoTaskService(repository.TodoTask),
+		Authorization: NewAuthService(repository.Auth),
+		TodoTask:      NewTodoTaskService(repository.TodoTask),
 	}
 }

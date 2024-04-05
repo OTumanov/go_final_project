@@ -64,6 +64,7 @@ type TodoTaskSqlite struct {
 func NewTodoTaskSqlite(db *sqlx.DB) *TodoTaskSqlite {
 	return &TodoTaskSqlite{db: db}
 }
+
 func (t *TodoTaskSqlite) NextDate(nd model.NextDate) (string, error) {
 	if nd.Repeat == "" {
 		return "", fmt.Errorf(WRONG_REPEAT, nd.Repeat)

@@ -13,3 +13,4 @@ DB:
   SQLCreateIndexes: >
     CREATE INDEX IF NOT EXISTS idx_date ON scheduler (date);
 WEBDir: "./web"
+SIGN_KEY: "904wuETGPFUWP($9fjwGHlkdjfsaj9p4ghalsrg"

@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"github.com/OTumanov/go_final_project/pkg/service"
 	"github.com/spf13/viper"
 	"net/http"
-
-	"github.com/OTumanov/go_final_project/pkg/service"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,9 +20,11 @@ func NewHandler(service *service.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 
-	api := router.Group("/api")
+	router.POST("/api/signin", h.login)
+	router.GET("/api/nextdate", h.nextDate)
+
+	api := router.Group("/api", h.authMiddleware)
 	{
-		api.GET("/nextdate", h.nextDate)
 
 		api.POST("/task", h.createTask)
 		api.GET("/task", h.getTaskById)
@@ -35,7 +37,6 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	static := router.Group("/")
 	{
 		router.GET("/", h.indexPage)
-
 		static.StaticFS("./css", http.Dir(viper.Get("WEBDir").(string)+"/css"))
 		static.StaticFS("./js", http.Dir(viper.Get("WEBDir").(string)+"/js"))
 		router.StaticFile("/index.html", "./web/index.html")
@@ -47,5 +48,15 @@ func (h *Handler) InitRoutes() *gin.Engine {
 }
 
 func (h *Handler) indexPage(c *gin.Context) {
+	if os.Getenv("TODO_PASSWORD") == "" {
+		deleteCookie := &http.Cookie{
+			Name:     "token",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1, // Устанавливаем отрицательное время жизни для удаления куки
+			HttpOnly: true,
+		}
+		http.SetCookie(c.Writer, deleteCookie)
+	}
 	http.ServeFile(c.Writer, c.Request, "./web/index.html")
 }
