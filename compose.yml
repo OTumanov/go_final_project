@@ -2,22 +2,17 @@ version: '3'
 
 services:
   my_app:
-    image: app12
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "7540:7540"
-    volumes:
-      - appdata:/app/db
     environment:
       TODO_PORT: 7540
-      TODO_DBFILE: ":/db/scheduler.db"
-      TODO_PASSWORD: "1234"
+      TODO_DBFILE: "/app/db/scheduler.db"
+      TODO_PASSWORD: "12345"
+    volumes:
+      - appdata:/app/db
+
 volumes:
   appdata:
-    driver: local
-    driver_opts:
-      type: none
-      device: /db
-      o: bind
