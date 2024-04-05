@@ -2,39 +2,41 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"strings"
+	"github.com/sirupsen/logrus"
+	"os"
 )
 
 const (
-	AUTH_HEADER           = "Authorization"
-	HEADER_IS_EMPTY_ERROR = "В хедере нет заголовка Authorization"
-	HEADER_FORMAT_ERROR   = "Неверный формат хедера"
+	COOKIE_NAME           = "token"
+	COOKIE_IS_EMPTY_ERROR = "Поле есть, а токен пустой"
+	KEY_C_SET             = "Valid"
 )
 
 func (h *Handler) authMiddleware(c *gin.Context) {
-	header := c.GetHeader(AUTH_HEADER)
-	if header == "" {
-		NewResponseError(c, 401, HEADER_IS_EMPTY_ERROR)
+	if os.Getenv("TODO_PASSWORD") == "" {
+		c.SetCookie("token", "nil", -1, "/", "localhost", false, true)
+		c.Set("Valid", true)
 		return
 	}
 
-	headerStr := strings.Split(header, " ")
-	if len(headerStr) != 2 {
-		NewResponseError(c, 401, HEADER_FORMAT_ERROR)
-		return
-	}
-
-	if headerStr[0] != "Bearer" {
-		NewResponseError(c, 401, HEADER_FORMAT_ERROR)
-		return
-	}
-
-	isValid, err := h.service.Authorization.ParseToken(headerStr[1])
-
+	cookie, err := c.Request.Cookie(COOKIE_NAME)
 	if err != nil {
+		logrus.Println("Какая то ошибка c.Request.Cookie: " + err.Error())
+		NewResponseError(c, 401, err.Error())
+		return
+	}
+	if cookie.Value == "" {
+		logrus.Println(COOKIE_IS_EMPTY_ERROR)
+		NewResponseError(c, 401, COOKIE_IS_EMPTY_ERROR)
+		return
+	}
+
+	isValid, err := h.service.Authorization.ParseToken(cookie.Value)
+	if err != nil {
+		logrus.Println("Какая то ошибка от h.service.Authorization.ParseToken: " + err.Error())
 		NewResponseError(c, 401, err.Error())
 		return
 	}
 
-	c.Set("Valid", isValid)
+	c.Set(KEY_C_SET, isValid)
 }
