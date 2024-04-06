@@ -7,36 +7,32 @@ import (
 )
 
 const (
-	COOKIE_NAME           = "token"
-	COOKIE_IS_EMPTY_ERROR = "Поле есть, а токен пустой"
-	KEY_C_SET             = "Valid"
+	CookieName         = "token"
+	CookieIsEmptyError = "Поле есть, а токен пустой"
+	ErrCookieRequest   = "Ошибка в куках: %v"
+	ErrorParsedToken   = "Ошибка во время парсинга токена: %v"
 )
 
 func (h *Handler) authMiddleware(c *gin.Context) {
-	if os.Getenv("TODO_PASSWORD") == "" {
-		c.SetCookie("token", "nil", -1, "/", "localhost", false, true)
-		c.Set("Valid", true)
-		return
-	}
+	if os.Getenv("TODO_PASSWORD") != "" {
+		cookie, err := c.Request.Cookie(CookieName)
+		if err != nil {
+			logrus.Printf(ErrCookieRequest, err.Error())
+			NewResponseError(c, 401, err.Error())
+			return
+		}
 
-	cookie, err := c.Request.Cookie(COOKIE_NAME)
-	if err != nil {
-		logrus.Println("Какая то ошибка c.Request.Cookie: " + err.Error())
-		NewResponseError(c, 401, err.Error())
-		return
-	}
-	if cookie.Value == "" {
-		logrus.Println(COOKIE_IS_EMPTY_ERROR)
-		NewResponseError(c, 401, COOKIE_IS_EMPTY_ERROR)
-		return
-	}
+		if cookie.Value == "" {
+			logrus.Println(CookieIsEmptyError)
+			NewResponseError(c, 401, CookieIsEmptyError)
+			return
+		}
 
-	isValid, err := h.service.Authorization.ParseToken(cookie.Value)
-	if err != nil {
-		logrus.Println("Какая то ошибка от h.service.Authorization.ParseToken: " + err.Error())
-		NewResponseError(c, 401, err.Error())
-		return
+		_, err = h.service.Authorization.ParseToken(cookie.Value)
+		if err != nil {
+			logrus.Printf(ErrorParsedToken, err.Error())
+			NewResponseError(c, 401, err.Error())
+			return
+		}
 	}
-
-	c.Set(KEY_C_SET, isValid)
 }

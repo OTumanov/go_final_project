@@ -1,12 +1,9 @@
-Сие надо запускать примерно так --  
-`export TODO_PORT=7540 && export TODO_DBFILE="./scheduler.db" && go run cmd/main.go`  
-Тесты --  
-`go test -run ^TestApp$ ./tests`  
-`go test -run ^TestDB$ ./tests`  
-`go test -run ^TestNextDate$ ./tests`  
-`go test -run ^TestAddTask$ ./tests`  
-`go test -run ^TestTasks$ ./tests`  
-`go test -run ^TestTask$ ./tests`  
-`go test -run ^TestEditTask$ ./tests`  
-или  
-`go test ./tests`
+Локаноль запускать примерно так --  
+`export TODO_PASSWORD="" && go run cmd/main.go`  
+Тесты
+`go test -count=1 ./tests`
+
+Докер  
+`docker compose up -d`
+
+Порт, имя и путь до базы, пароль - всё в `compose.yml`

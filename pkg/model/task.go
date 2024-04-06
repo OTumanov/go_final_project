@@ -3,7 +3,7 @@ package model
 type Task struct {
 	ID      string `json:"id"`
 	Date    string `json:"date"`
-	Title   string `json:"title" binding:"required"`
+	Title   string `json:"title"`
 	Comment string `json:"comment"`
-	Repeat  string `json:"repeat" binding:"required"`
+	Repeat  string `json:"repeat"`
 }

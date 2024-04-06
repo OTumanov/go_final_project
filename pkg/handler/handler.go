@@ -25,7 +25,6 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 	api := router.Group("/api", h.authMiddleware)
 	{
-
 		api.POST("/task", h.createTask)
 		api.GET("/task", h.getTaskById)
 		api.GET("/tasks", h.getTasks)
@@ -36,14 +35,15 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 	static := router.Group("/")
 	{
-		router.GET("/", h.indexPage)
 		static.StaticFS("./css", http.Dir(viper.Get("WEBDir").(string)+"/css"))
 		static.StaticFS("./js", http.Dir(viper.Get("WEBDir").(string)+"/js"))
-		router.StaticFile("/index.html", "./web/index.html")
-		router.StaticFile("/login.html", "./web/login.html")
-		router.StaticFile("/favicon.ico", "./web/favicon.ico")
-
 	}
+
+	router.GET("/", h.indexPage)
+	router.StaticFile("/index.html", "./web/index.html")
+	router.StaticFile("/login.html", "./web/login.html")
+	router.StaticFile("/favicon.ico", "./web/favicon.ico")
+
 	return router
 }
 

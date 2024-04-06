@@ -8,23 +8,21 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"net/http"
 	"os"
 	"time"
 )
 
 const (
-	TOKEN_TTL                 = 8 * time.Hour
-	RESPONSE                  = "Получили объект User со следующими данными: login: %s, password: %s"
-	EMPTY_USER_PASSWORD       = "Пользователь передал пустое поле пароля"
-	EMPTY_USER_PASSWORD_ERROR = "А где пароль-то?!"
-	ENV_PASSWORD              = "TODO_PASSWORD"
-	NO_PASSWORD_IN_ENV        = "Пароль не задан. Проверь указал ли ты TODO_PASSWORD"
-	NO_PASSWORD_IN_ENV_LOGRUS = "Пароль не задан. Проверь указал ли ты TODO_PASSWORD в окружении на сверере. Пускаю без пароля. Твой токен выше =)"
-	WRONG_PASSWORD            = "Неправильный пароль"
-	SEARCH_COOKIE             = "Искали старые куки с токеном -- "
-	TOKEN_COOKEI_DONE         = "Токен выдали, куки записали"
-	SUCCESS_LOGIN             = "Похоже, что всё верно - выдаю токен =)"
+	TokenTtl               = 8 * time.Hour
+	Response               = "Получили объект User со следующими данными: login: %s, password: %s"
+	EmptyUserPassword      = "Пользователь передал пустое поле пароля"
+	EmptyUserPasswordError = "А где пароль-то?!"
+	EnvPassword            = "TODO_PASSWORD"
+	NoPasswordInEnv        = "Пароль не задан. Проверь указал ли ты TODO_PASSWORD"
+	NoPasswordInEnvLog     = "Пароль не задан. Проверь указал ли ты TODO_PASSWORD в окружении на сверере. Пускаю без пароля"
+	WrongPassword          = "Неправильный пароль"
+	TokenDone              = "Все проверки прошли. Токен выдали"
+	SuccessLogin           = "Похоже, что всё верно - выдаю токен =)"
 )
 
 type AuthSqlite struct {
@@ -46,35 +44,26 @@ func NewAuthSqlite(db *sqlx.DB) *AuthSqlite {
 }
 
 func (a *AuthSqlite) CheckAuth(c *gin.Context) {
-	if os.Getenv("TODO_PASSWORD") == "" {
-		c.SetCookie("token", "nil", -1, "/", "localhost", false, true)
-		c.JSON(200, gin.H{})
-		return
-	}
-
 	var u User
-	if c.ShouldBindJSON(&u) == nil {
-		logrus.Println(fmt.Sprintf(RESPONSE, u.Login, u.Password))
+
+	err := c.ShouldBindJSON(&u)
+	if err != nil {
+		logrus.Printf(Response, u.Login, u.Password)
+		c.JSON(500, gin.H{"error": err})
+		return
 	}
 
 	if u.Password == "" {
-		logrus.Error(EMPTY_USER_PASSWORD)
-		c.JSON(401, gin.H{"error": EMPTY_USER_PASSWORD_ERROR})
+		logrus.Error(EmptyUserPassword)
+		c.JSON(401, gin.H{"error": EmptyUserPasswordError})
 		return
 	}
 
-	passwordENV := os.Getenv(ENV_PASSWORD)
+	passwordENV := os.Getenv(EnvPassword)
 
 	if len(passwordENV) == 0 {
-		token, err := GenerateJWT(u.Login)
-		if err != nil {
-			logrus.Error(err)
-			c.JSON(500, gin.H{"error": err.Error()})
-		}
-
-		logrus.Error(NO_PASSWORD_IN_ENV)
-
-		c.JSON(200, gin.H{"warning": NO_PASSWORD_IN_ENV_LOGRUS, "token": token})
+		logrus.Warn(NoPasswordInEnv)
+		c.JSON(200, gin.H{"warning": NoPasswordInEnvLog})
 		return
 	}
 
@@ -84,8 +73,9 @@ func (a *AuthSqlite) CheckAuth(c *gin.Context) {
 		hashPass := generatePasswordHash(u.Password)
 
 		if hashPass != hashPassENV {
-			logrus.Error(WRONG_PASSWORD)
-			c.JSON(401, gin.H{"error": WRONG_PASSWORD})
+			logrus.Error(WrongPassword)
+			c.JSON(401, gin.H{"warning": WrongPassword})
+			return
 		}
 	}
 
@@ -94,21 +84,11 @@ func (a *AuthSqlite) CheckAuth(c *gin.Context) {
 		if err != nil {
 			logrus.Error(err)
 			c.JSON(500, gin.H{"error": err.Error()})
+			return
 		}
 
-		oldCookie, err := c.Cookie("token")
-		if err == nil {
-			deleteCookie := &http.Cookie{
-				Name:   "token",
-				MaxAge: -1,
-			}
-			http.SetCookie(c.Writer, deleteCookie)
-		}
-
-		logrus.Println(SEARCH_COOKIE + oldCookie)
-		//c.SetCookie("token", token, 3600, "/", "localhost", false, true)
 		c.JSON(200, gin.H{"token": token})
-		logrus.Println(TOKEN_COOKEI_DONE)
+		logrus.Println(TokenDone)
 	}
 }
 
@@ -118,12 +98,12 @@ func GenerateJWT(username string) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &myClaims{
 		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(TOKEN_TTL).Unix(),
+			ExpiresAt: time.Now().Add(TokenTtl).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
 		username,
 	})
-	logrus.Println(SUCCESS_LOGIN)
+	logrus.Println(SuccessLogin)
 
 	return token.SignedString([]byte(viper.Get("SIGN_KEY").(string)))
 }

@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	INFO_GETTING_PORT_FROM_ENVIRONMENT = "Получаем порт из окружения..."
-	INFO_USING_DEFAULT_PORT            = "Порт не задан. Будем использовать из конфига - "
-	PORT_SET                           = "Порт задан - "
+	GettingPortFromEnvironment = "Получаем порт из окружения..."
+	UsingDefaultPort           = "Порт не задан. Будем использовать из конфига -- "
+	PortSet                    = "Порт задан -- "
+	StartingServer             = "Запуск сервера... Если дальше нет ошибок, то сервер успешно запущен"
 )
 
 type Server struct {
@@ -19,22 +20,22 @@ type Server struct {
 }
 
 func (s *Server) Run(port string, handler http.Handler) error {
+	logrus.Println(StartingServer)
 	s.httpserver = &http.Server{
 		Addr:    ":" + port,
 		Handler: handler,
 	}
-
 	return s.httpserver.ListenAndServe()
 }
 
 func EnvPORT(key string) string {
-	logrus.Println(INFO_GETTING_PORT_FROM_ENVIRONMENT)
+	logrus.Println(GettingPortFromEnvironment)
 	port := os.Getenv(key)
 	if len(port) == 0 {
 		port = viper.Get("Port").(string)
-		logrus.Println(INFO_USING_DEFAULT_PORT + port)
+		logrus.Warnf(UsingDefaultPort + port)
 	} else {
-		logrus.Println(PORT_SET + port)
+		logrus.Println(PortSet + port)
 	}
 	return port
 }
