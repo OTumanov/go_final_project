@@ -1,3 +1,2 @@
 .idea
-*.db
-draft/main.go
+#*.db
