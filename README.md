@@ -1,4 +1,4 @@
-Локаноль запускать примерно так --  
+Запускать примерно так --  
 `export TODO_PASSWORD="" && go run cmd/main.go`  
 Тесты
 `go test -count=1 ./tests`
