@@ -21,7 +21,7 @@ func notFoundTask(t *testing.T, id string) {
 
 func TestDone(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	now := time.Now()
 	id := addTask(t, task{
@@ -54,7 +54,7 @@ func TestDone(t *testing.T) {
 
 func TestDelTask(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	id := addTask(t, task{
 		title:  "Временная задача",

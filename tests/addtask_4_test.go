@@ -54,7 +54,7 @@ func requestJSON(apipath string, values map[string]any, method string) ([]byte, 
 	}
 
 	if resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	return io.ReadAll(resp.Body)
 }
@@ -82,7 +82,7 @@ type task struct {
 
 func TestAddTask(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	tbl := []task{
 		{"20240129", "", "", ""},

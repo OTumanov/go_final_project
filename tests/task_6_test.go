@@ -13,7 +13,7 @@ import (
 
 func TestTask(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	now := time.Now()
 
@@ -55,7 +55,7 @@ type fulltask struct {
 
 func TestEditTask(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	now := time.Now()
 

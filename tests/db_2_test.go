@@ -36,7 +36,7 @@ func openDB(t *testing.T) *sqlx.DB {
 
 func TestDB(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	before, err := count(db)
 	assert.NoError(t, err)

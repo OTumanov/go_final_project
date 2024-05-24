@@ -40,7 +40,7 @@ func getTasks(t *testing.T, search string) []map[string]string {
 
 func TestTasks(t *testing.T) {
 	db := openDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	now := time.Now()
 	_, err := db.Exec("DELETE FROM scheduler")
